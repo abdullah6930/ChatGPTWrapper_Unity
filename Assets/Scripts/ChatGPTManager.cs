@@ -1,3 +1,4 @@
+using AbdullahQadeer.helper;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -21,6 +22,13 @@ namespace AbdullahQadeer.ChatGPTWrapper
         private static HttpClient _httpClient;
 
         private static bool _isInitialized;
+        private static CircularList<BotMessage> _messages = new (ChatGPTWrapperData.Instance.MaxHistoryLimit);
+
+        public static void ResizeCirularList(int size)
+        {
+            _messages.Resize(size);
+        }
+
 
         public static void Initialize()
         {
@@ -35,6 +43,7 @@ namespace AbdullahQadeer.ChatGPTWrapper
             };
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
             _httpClient.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
+            _isInitialized = true;
             Debug.Log("Initialized ChatGPTWrapper ..");
         }
 
@@ -52,92 +61,101 @@ namespace AbdullahQadeer.ChatGPTWrapper
             _apiKey = apiKeyData.apiKey;
         }
 
-        public static async Task<string> SendMessage(string message, List<ChatBotMessage> chatBotMessages = null)
+        public static async Task<string> SendMessage(string message)
         {
             if(!_isInitialized)
             {
                 Debug.Log("ChatGPTWrapper is not Initialized ..");
                 Initialize();
             }
-            var requestBody = new ChatBotRequestBody
+            var requestBody = new BotRequest
             {
                 model = "gpt-3.5-turbo"
             };
-            var chatBotMessage = new ChatBotMessage
+            var chatBotMessage = new BotMessage
             {
-                role = "user",
                 content = message
             };
 
-            if(chatBotMessages != null)
+            var wrapperData = ChatGPTWrapperData.Instance;
+            if (wrapperData.RememberChatContext)
             {
-                requestBody.messages = chatBotMessages;
+                requestBody.messages = _messages.ToList();
             }
             else
             {
-                requestBody.messages = new List<ChatBotMessage>();
+                requestBody.messages = new List<BotMessage>();
             }
 
             requestBody.messages.Add(chatBotMessage);
             StringContent requestContent;
             HttpResponseMessage response;
-
             try
             {
-
-                requestContent = new StringContent(JsonUtility.ToJson(requestBody), Encoding.UTF8, "application/json");
+                var json = JsonUtility.ToJson(requestBody);
+                requestContent = new StringContent(json, Encoding.UTF8, "application/json");
                 response = await _httpClient.PostAsync("", requestContent);
 
                 response.EnsureSuccessStatusCode();
                 var responseContent = await response.Content.ReadAsStringAsync();
 
-                ChatBotResponseBody jsonResponse = JsonUtility.FromJson<ChatBotResponseBody>(responseContent);
-                return jsonResponse.Choices[0].Message.content;
+                BotResponse jsonResponse = JsonUtility.FromJson<BotResponse>(responseContent);
+
+                var botMessage = jsonResponse.choices[0].message;
+                if (ChatGPTWrapperData.Instance.RememberChatContext)
+                {
+                    _messages.Add(botMessage);
+                }
+                else
+                {
+                    _messages.Clear();
+                }
+                return botMessage.content;
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                return "Sorry Something went Wrong " + ex;
+                return "Sorry Something is not right please contact developer.";
             }
         }
 
         [Serializable]
-        public class ChatBotResponseBody 
+        public class BotResponse 
         {
-            public string Id;
-            public string Object;
-            public long Created;
-            public string Model;
-            public BotMessageUsage Usage;
-            public Choice[] Choices;
+            public string id;
+            public string @object;
+            public long created;
+            public string model;
+            public BotMessageUsage usage;
+            public Choice[] choices;
 
             [Serializable]
             public class BotMessageUsage
             {
-                public int PromptTokens;
-                public int CompletionTokens;
-                public int TotalTokens;
+                public int prompt_tokens;
+                public int completion_tokens;
+                public int total_tokens;
             }
 
             [Serializable]
             public class Choice
             {
-                public ChatBotMessage Message;
-                public string FinishReason;
-                public int Index;
+                public BotMessage message;
+                public string finish_reason;
+                public int index;
             }
         }
 
         [Serializable]
-        public class ChatBotRequestBody
+        public class BotRequest
         {
             public string model = "gpt-3.5-turbo";
-            public List<ChatBotMessage> messages;
+            public List<BotMessage> messages;
             public float temperature = 0.7f; // 0.0 - 1.0
         }
 
 
         [Serializable]
-        public class ChatBotMessage
+        public class BotMessage
         {
             public string role = "user"; // useer or system
             public string content; // actual message that the user sent or received by ChatBot

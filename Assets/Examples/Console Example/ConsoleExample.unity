@@ -152,7 +152,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3d5d8b071ba54464fac3792d7292903b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  message: hi
+  message: give me a random number
 --- !u!4 &302401284
 Transform:
   m_ObjectHideFlags: 0

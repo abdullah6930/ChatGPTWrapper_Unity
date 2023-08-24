@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace AbdullahQadeer.ChatGPTWrapper.Example
 {
-    public class ChatGPTLogExample : MonoBehaviour
+    public class ChatGPTConsoleExample : MonoBehaviour
     {
         public string message;
 
@@ -14,16 +14,16 @@ namespace AbdullahQadeer.ChatGPTWrapper.Example
             ChatGPTManager.Initialize();
         }
 
-        public async void SendMessage(string message)
+        public async void SendMessageToBot(string message)
         {
-            Debug.Log(message);
+            Debug.Log("User : " + message);
             var response = await ChatGPTManager.SendMessage(message);
-            Debug.Log(response);
+            Debug.Log("Bot : " + response);
         }
 #if UNITY_EDITOR
 
-        [CustomEditor(typeof(ChatGPTLogExample))]
-        public class ChatGPTLogExampleEditor : Editor
+        [CustomEditor(typeof(ChatGPTConsoleExample))]
+        public class ChatGPTConsoleExampleEditor : Editor
         {
             public override void OnInspectorGUI()
             {
@@ -31,12 +31,12 @@ namespace AbdullahQadeer.ChatGPTWrapper.Example
                 DrawDefaultInspector();
 
                 // Get a reference to the script being edited
-                var myScript = (ChatGPTLogExample)target;
+                var myScript = (ChatGPTConsoleExample)target;
 
                 // Add custom GUI elements here
                 if (GUILayout.Button("Send Button"))
                 {
-                    myScript.SendMessage(myScript.message);
+                    myScript.SendMessageToBot(myScript.message);
                 }
             }
         }
